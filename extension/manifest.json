@@ -1,0 +1,10 @@
+{
+  "manifest_version": 3,
+  "name": "Job Agent Autofill",
+  "version": "1.0",
+  "description": "One click: fills the job application form you have open using your Job Agent profile, resume and answers. Leaves CAPTCHAs and anything it cannot answer truthfully for you. Never submits.",
+  "permissions": ["activeTab", "scripting"],
+  "host_permissions": ["http://127.0.0.1:8765/*"],
+  "action": { "default_title": "Fill this application" },
+  "background": { "service_worker": "background.js" }
+}

@@ -1,0 +1,38 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>Site logins</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1c2128;--mut:#6b7280;--line:#e3e6ea;--acc:#2f6fed;--good:#1a8f4c;--warn:#b7791f;--bad:#c0392b}
+@media(prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1c2128;--fg:#e6e8eb;--mut:#8b94a1;--line:#2b323b;--acc:#6b9bff;--good:#5bd28c;--warn:#f0b24a;--bad:#ff7b6b}}
+*{box-sizing:border-box}body{margin:0;font:14px/1.5 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+header{padding:16px 20px}h1{font-size:18px;margin:0}a{color:var(--acc);text-decoration:none}
+main{padding:0 20px 40px;max-width:760px}
+.row{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.top{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.name{font-weight:600;font-size:15px;text-transform:capitalize}
+.tag{font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid currentColor}
+.ok{color:var(--good)}.no{color:var(--mut)}.open{color:var(--warn)}.err{color:var(--bad)}
+button{font:inherit;padding:6px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--fg);cursor:pointer}
+button.p{background:var(--acc);border-color:var(--acc);color:#fff}button:disabled{opacity:.5;cursor:default}
+.mut{color:var(--mut);font-size:13px;margin-top:6px}ol{margin:8px 0 0 18px;padding:0;color:var(--mut);font-size:13px}
+</style>
+<header><h1>Site logins <a href="/" style="font-size:13px;font-weight:400;margin-left:12px">← Jobs</a></h1></header>
+<main>
+<div class=mut style="margin:0 0 12px">Some sites only let signed-in people apply. Log in once here and the agent reuses your session on that site only. Your password is never seen or saved: you type it into the site's own page.</div>
+<div id=list></div>
+<ol><li>Press <b>Open login window</b>: a browser window opens on this computer.</li><li>Sign in there (finish any verification).</li><li>Come back here and press <b>Save session</b>. Jobs waiting for that site are queued automatically.</li></ol>
+</main>
+<script>
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+async function post(u,b){const r=await fetch(u,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});return r.json()}
+async function load(){
+  const d=await (await fetch('/api/logins')).json();
+  list.innerHTML=Object.entries(d).map(([s,v])=>{
+    const tag=v.state==='open'?'<span class="tag open">window open</span>':v.logged_in?'<span class="tag ok">logged in</span>':'<span class="tag no">not logged in</span>';
+    return `<div class=row><div class=top><span class=name>${esc(s)}</span>${tag}<span style="flex:1"></span>
+      <button class=p ${v.state==='open'?'disabled':''} onclick="go('${s}')">${v.logged_in?'Log in again':'Open login window'}</button>
+      <button ${v.state==='open'?'':'disabled'} onclick="save('${s}')">Save session</button></div>
+      <div class="mut ${v.state==='error'?'err':''}">${esc(v.msg||'')}${v.waiting?` · ${v.waiting} job(s) waiting for this login`:''}</div></div>`}).join('');
+}
+async function go(s){await post('/api/login/start',{site:s});load()}
+async function save(s){const r=await post('/api/login/save',{site:s});load()}
+load();setInterval(load,3000);
+</script>

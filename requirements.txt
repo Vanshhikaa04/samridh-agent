@@ -1,0 +1,11 @@
+httpx
+openai>=1.40
+chromadb
+pyyaml
+python-dotenv
+pypdf
+playwright
+rich
+beautifulsoup4
+laya
+pymupdf

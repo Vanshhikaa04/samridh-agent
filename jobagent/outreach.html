@@ -1,0 +1,175 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>Outreach</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1c2128;--mut:#6b7280;--line:#e3e6ea;--acc:#2f6fed}
+@media(prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1c2128;--fg:#e6e8eb;--mut:#8b94a1;--line:#2b323b;--acc:#6b9bff}}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+header{padding:16px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+h1{font-size:18px;margin:0}a{color:var(--acc);text-decoration:none}.mut{color:var(--mut);font-size:12px}
+.chip{padding:4px 10px;border:1px solid var(--line);border-radius:99px;background:var(--card);cursor:pointer;color:var(--mut);margin-right:6px;display:inline-block;margin-bottom:4px}
+.chip.on{border-color:var(--acc);color:var(--acc);font-weight:600}
+.banner{margin:0 20px 12px;padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card)}
+main{padding:0 20px 40px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--mut);text-transform:uppercase;letter-spacing:.04em}
+input{font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 7px;width:100%;min-width:130px}
+button{font:inherit;color:#fff;background:var(--acc);border:0;border-radius:6px;padding:4px 11px;cursor:pointer;margin:0 4px 4px 0}
+button.g{background:transparent;color:var(--acc);border:1px solid var(--line)}button:disabled{opacity:.45;cursor:not-allowed}
+.st-sent{border-left:3px solid #1a9c55}.st-drafted{border-left:3px solid #d99a06}.st-replied{border-left:3px solid #2f6fed}
+.st-failed,.st-bounced{border-left:3px solid #d64545}.st-skipped{border-left:3px solid #8b94a1}
+pre{white-space:pre-wrap;font:13px/1.5 system-ui,sans-serif;margin:6px 0 0;background:var(--bg);padding:12px;border-radius:8px;border:1px solid var(--line)}
+.addbox{margin:0 20px 14px;padding:12px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card)}
+.addbox h2{font-size:14px;margin:0 0 4px}.addbox textarea{width:100%;margin:8px 0;font:13px/1.45 ui-monospace,Consolas,monospace;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px}
+.addbox .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}code{background:var(--bg);padding:1px 5px;border-radius:4px}
+.st-sending{border-left:3px solid #8a5cf6}
+</style>
+<header>
+  <h1>Outreach <a href="/" style="font-size:13px;font-weight:400;margin-left:12px">&larr; Applications</a></h1>
+  <div id=chips></div>
+</header>
+<div class=banner id=banner></div>
+<section class=addbox>
+  <h2>Send to specific people</h2>
+  <div class=mut>One per line: <code>email, first name, company</code>. The first name and company are optional; if you leave them out they are worked out from the address
+    (<code>jane@acme.io</code> becomes "Hey Jane" and "Acme"; <code>careers@acme.io</code> becomes "Hello,"). Your template is used and your resume is attached.</div>
+  <textarea id=addtext rows=4 placeholder="jane@acme.io, Jane, Acme&#10;Naman Saini &lt;naman@startup.ai&gt;&#10;cto@foo-bar.com"></textarea>
+  <div class=row>
+    <button id=sendnow onclick="addPeople(true)">Send now</button>
+    <button class=g onclick="addPeople(false)">Add as drafts (review first)</button>
+    <span id=addmsg class=mut></span>
+  </div>
+  <div id=addresults class=mut style="margin-top:8px"></div>
+</section>
+
+<section class=addbox id=fu>
+  <h2>Follow-ups</h2>
+  <div class=mut>Emails sent more than
+    <input id=fudays type=number value=5 min=0 style="width:60px;min-width:0" onchange="loadFU()"> days ago with no reply. Type your follow-up below; it is laid over each
+    person: <code>{first_name}</code> and <code>{company}</code> are filled in, and a greeting, the company name and a sign-off are added if your text has none. Leave it
+    empty to use the standard follow-up.</div>
+  <textarea id=fumsg rows=5 oninput="previewFU()"></textarea>
+  <div class=row>
+    <label><input type=checkbox id=fuattach style="width:auto;min-width:0"> attach resume</label>
+    <button id=fusend onclick="sendFU()">Send follow-up to selected</button>
+    <button class=g onclick="toggleAll(true)">Select all</button><button class=g onclick="toggleAll(false)">None</button>
+    <span id=fumsgout class=mut></span>
+  </div>
+  <div class=mut style="margin-top:8px">Preview for the first selected person:</div>
+  <pre id=fupreview></pre>
+  <table style="margin-top:10px"><thead><tr><th><th>Company<th>Person<th>Email<th>Sent<th>Follow-ups</th></tr></thead><tbody id=futb></tbody></table>
+</section>
+
+<main>
+  <table>
+    <thead><tr><th>Company<th>Person<th>First name<th>Email<th>Source<th>Status<th></th></tr></thead>
+    <tbody id=tb></tbody>
+  </table>
+</main>
+<script>
+let rows = [], meta = {}, filter = 'all', openId = null;
+const EDITABLE = ['drafted', 'failed', 'needs_email'];
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+
+async function load() {
+  const d = await (await fetch('/api/outreach')).json();
+  rows = d.rows; meta = d.meta; draw();
+}
+async function act(action, id, extra) {
+  const r = await fetch('/api/outreach/' + action, {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({id, ...extra})});
+  const j = await r.json();
+  if (!r.ok && j.message) alert(j.message);
+  await load();
+}
+async function addPeople(send) {
+  const text = document.getElementById('addtext').value.trim();
+  const msg = document.getElementById('addmsg');
+  if (!text) { msg.textContent = 'Type at least one email address first.'; return; }
+  msg.textContent = send ? 'Adding and sending...' : 'Adding drafts...';
+  document.getElementById('sendnow').disabled = true;
+  try {
+    const r = await fetch('/api/outreach/add', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({text, send})});
+    const j = await r.json();
+    if (!r.ok) { msg.textContent = j.message || 'Something went wrong'; return; }
+    document.getElementById('addtext').value = '';
+    document.getElementById('addresults').innerHTML = j.results.map(x => x.ok
+      ? '&#10004; ' + esc(x.input) + ' &rarr; ' + (x.first_name ? 'Hey ' + esc(x.first_name) + ',' : 'Hello,') + ' &middot; ' + esc(x.company)
+      : '&#10008; ' + esc(x.input) + ': ' + esc(x.message)).join('<br>');
+    msg.textContent = j.note || '';
+    await load();
+    let n = 0;  // emails go out one by one in the background, so keep refreshing for a while
+    const t = setInterval(async () => { await load(); if (++n > 40) clearInterval(t); }, 3000);
+  } finally {
+    document.getElementById('sendnow').disabled = false;
+  }
+}
+let fuRows = [];
+async function loadFU() {
+  const days = document.getElementById('fudays').value || 5;
+  const d = await (await fetch('/api/followups?days=' + days)).json();
+  fuRows = d.rows;
+  const box = document.getElementById('fumsg');
+  if (!box.placeholder) box.placeholder = d.meta.default;
+  document.getElementById('futb').innerHTML = fuRows.map(r => `<tr><td><input type=checkbox class=fusel value="${r.id}" checked style="width:auto;min-width:0" onchange="previewFU()">
+    <td><b>${esc(r.display_company || r.company)}</b><td>${esc(r.name || '(generic inbox)')}<div class=mut>${esc(r.title)}</div><td>${esc(r.email)}
+    <td>${esc((r.sent_at || '').slice(0, 10))}<td>${r.fcount ? r.fcount + ' sent, last ' + esc((r.flast || '').slice(0, 10)) : '-'}</tr>`).join('')
+    || '<tr><td colspan=6 class=mut>Nothing due for a follow-up yet.</td></tr>';
+  document.getElementById('fumsgout').textContent = fuRows.length + ' due. Today: ' + d.meta.used + '/' + d.meta.cap + ' emails used.';
+  previewFU();
+}
+function toggleAll(on) { document.querySelectorAll('.fusel').forEach(b => b.checked = on); previewFU(); }
+function selectedFU() { return [...document.querySelectorAll('.fusel:checked')].map(b => +b.value); }
+async function previewFU() {
+  const first = fuRows.find(r => selectedFU().includes(r.id));
+  const out = document.getElementById('fupreview');
+  if (!first) { out.textContent = ''; return; }
+  const r = await fetch('/api/followups/preview', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({message: document.getElementById('fumsg').value, first_name: first.first_name, company: first.display_company || first.company})});
+  out.textContent = (await r.json()).text;
+}
+async function sendFU() {
+  const ids = selectedFU();
+  if (!ids.length) { document.getElementById('fumsgout').textContent = 'Select at least one person.'; return; }
+  if (!confirm('Send a follow-up to ' + ids.length + ' people?')) return;
+  const r = await fetch('/api/followups/send', {method: 'POST', headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ids, message: document.getElementById('fumsg').value, attach: document.getElementById('fuattach').checked})});
+  const j = await r.json();
+  document.getElementById('fumsgout').textContent = j.note || j.message || '';
+  let n = 0; const t = setInterval(async () => { await loadFU(); if (++n > 30) clearInterval(t); }, 8000);
+}
+function togglePreview(id) { openId = openId === id ? null : id; draw(); }
+function setFilter(s) { filter = s; draw(); }
+
+function draw() {
+  const statuses = ['drafted', 'sending', 'needs_email', 'sent', 'replied', 'failed', 'bounced', 'skipped'];
+  const count = s => rows.filter(r => r.status === s).length;
+  document.getElementById('chips').innerHTML = ['all', ...statuses].map(s =>
+    `<span class="chip ${s === filter ? 'on' : ''}" onclick="setFilter('${s}')">${s} ${s === 'all' ? rows.length : count(s)}</span>`).join('');
+  document.getElementById('banner').innerHTML = meta.smtp
+    ? `Sending is <b>ON</b> from your Gmail${meta.auto ? ' (auto-send enabled)' : ' (you press Send on each one)'}. Sent today: <b>${meta.sent_today}/${meta.cap}</b>.`
+    : `Sending is <b>OFF</b>: add your Gmail app password to <span class=mut>.env</span> (SMTP_USER, SMTP_PASSWORD). Until then this is a review list where you can read every email.`;
+  const list = rows.filter(r => filter === 'all' || r.status === filter);
+  const html = list.map(r => {
+    const ed = EDITABLE.includes(r.status);
+    const actions =
+      `<button class=g onclick="togglePreview(${r.id})">${openId === r.id ? 'Hide' : 'Preview'}</button>` +
+      (ed && r.status !== 'needs_email' ? `<button ${meta.smtp ? '' : 'disabled title="Add SMTP settings first"'} onclick="this.disabled=true;act('send',${r.id})">Send</button>` +
+            `<button class=g onclick="act('skip',${r.id})">Skip</button>` : '') +
+      (r.status === 'skipped' ? `<button class=g onclick="act('restore',${r.id})">Restore</button>` : '') +
+      (r.status === 'sent' ? `<button class=g onclick="act('status',${r.id},{status:'replied'})">Mark replied</button>` : '');
+    const preview = openId === r.id
+      ? `<tr><td colspan=7><div class=mut>Subject: ${esc(r.subject)} &middot; attachment: your resume</div><pre>${esc(r.body)}</pre></td></tr>` : '';
+    return `<tr class="st-${r.status}">
+      <td><b>${esc(r.display_company)}</b><div class=mut>${esc(r.domain)}</div></td>
+      <td>${esc(r.name || '(generic inbox)')}<div class=mut>${esc(r.title)}</div></td>
+      <td><input value="${esc(r.first_name)}" ${ed ? '' : 'disabled'} placeholder="blank = Hello," onchange="act('update',${r.id},{first_name:this.value})"></td>
+      <td><input value="${esc(r.email)}" ${ed ? '' : 'disabled'} onchange="act('update',${r.id},{email:this.value})"></td>
+      <td>${esc(r.source)}<div class=mut>confidence: ${esc(r.confidence)}</div></td>
+      <td><b>${esc(r.status)}</b><div class=mut>${esc((r.sent_at || '').slice(0, 16))} ${esc(r.notes || '')}</div></td>
+      <td>${actions}</td></tr>${preview}`;
+  }).join('');
+  document.getElementById('tb').innerHTML = html || '<tr><td colspan=7 class=mut>Nothing here yet. Run: python -m jobagent outreach</td></tr>';
+}
+load(); loadFU();
+setInterval(() => { const a = document.activeElement; if (!a || a.tagName !== 'INPUT') load(); }, 20000);
+</script>

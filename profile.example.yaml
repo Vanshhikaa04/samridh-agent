@@ -1,0 +1,33 @@
+name: "Your Name"
+email: "you@example.com"
+phone: "+00 0000000000"
+linkedin: ""
+github: ""
+location: "City, Country"
+years_experience: 0
+education: "Your degree"
+notice_period: "Immediately available"
+languages: ["English"]
+
+# Fixed answers for common form questions (first keyword match wins).
+rules:
+  - match: ["relocate", "relocation"]
+    answer: "Yes"
+
+search:
+  titles: ["ai engineer", "machine learning engineer"]
+  exclude_title: ["senior", "lead", "staff", "principal", "manager", "director"]
+  max_years_required: 3
+  max_age_days: 7
+  big_company_blocklist: []
+  agency_hints: ["recruitment", "staffing"]
+  exclude_locations: []
+  linkedin_keywords: ["AI Engineer"]
+  linkedin_keywords_intern: ["AI Intern"]
+  linkedin_countries: ["Netherlands"]
+  ats_boards:
+    ashby: []
+    greenhouse: []
+    lever: []
+
+known_skills: []

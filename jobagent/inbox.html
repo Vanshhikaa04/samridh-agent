@@ -1,0 +1,31 @@
+<!doctype html><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1">
+<title>Inbox tracker</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--fg:#1c2128;--mut:#6b7280;--line:#e3e6ea;--acc:#2f6fed;--bad:#c0392b;--good:#1a8f4c;--warn:#b7791f}
+@media(prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1c2128;--fg:#e6e8eb;--mut:#8b94a1;--line:#2b323b;--acc:#6b9bff;--bad:#ff7b6b;--good:#5bd28c;--warn:#f0b24a}}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,sans-serif;background:var(--bg);color:var(--fg)}
+header{padding:16px 20px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+h1{font-size:18px;margin:0}a{color:var(--acc);text-decoration:none}
+.chips{display:flex;gap:8px;flex-wrap:wrap}.chip{padding:4px 10px;border:1px solid var(--line);border-radius:99px;background:var(--card);cursor:pointer;color:var(--mut)}
+.chip.on{border-color:var(--acc);color:var(--acc);font-weight:600}
+main{padding:0 20px 40px;max-width:1100px}
+.row{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:8px}
+.top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}.tag{font-size:12px;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid currentColor}
+.rejection{color:var(--bad)}.interview{color:var(--good)}.reply{color:var(--acc)}.auto_ack{color:var(--mut)}
+.mut{color:var(--mut);font-size:12px}.sn{color:var(--mut);margin-top:4px}
+</style>
+<header><h1>Inbox tracker <a href="/" style="font-size:13px;font-weight:400;margin-left:12px">← Jobs</a> <a href="/outreach" style="font-size:13px;font-weight:400;margin-left:8px">Outreach</a></h1><div class=chips id=chips></div></header>
+<main id=list></main>
+<script>
+let rows=[],f='all';
+const esc=s=>(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const names={all:'All',rejection:'Rejections',interview:'Interviews',reply:'Replies',auto_ack:'Auto-acknowledgements'};
+function draw(){
+  const cnt=k=>k==='all'?rows.length:rows.filter(r=>r.kind===k).length;
+  document.getElementById('chips').innerHTML=Object.keys(names).map(k=>`<span class="chip ${f===k?'on':''}" onclick="f='${k}';draw()">${names[k]} ${cnt(k)}</span>`).join('');
+  const v=rows.filter(r=>f==='all'||r.kind===f);
+  document.getElementById('list').innerHTML=v.length?v.map(r=>`<div class=row><div class=top><span class="tag ${r.kind}">${names[r.kind]||r.kind}</span><b>${esc(r.company||r.from_name||r.from_addr)}</b><span class=mut>${esc(r.from_addr)} · ${esc(r.received_at)}</span></div><div>${esc(r.subject)}</div><div class=sn>${esc(r.snippet)}</div></div>`).join(''):'<p class=mut>Nothing here yet. The agent scans your Gmail inbox every cycle.</p>';
+}
+async function load(){rows=await (await fetch('/api/inbox')).json();draw()}
+load();setInterval(load,30000);
+</script>

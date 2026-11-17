@@ -1,0 +1,25 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+*.pdf
+*.log
+profile.yaml
+extension/config.js
+data/auth/
+data/screens/
+data/chroma/
+data/resumes/
+data/old_resumes/
+data/email_drafts/
+data/resume_*/
+data/*.err
+data/*.out
+data/*_state.json
+data/extension_token.txt
+data/outreach_template.txt
+data/jobs.db-*
+data/linkedin_profile/
+
+# local database, not for the public repo
+data/jobs.db
